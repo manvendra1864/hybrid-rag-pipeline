@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated at ingest time from data/documents - not source, regenerate with
+# python scripts/ingest.py
+storage/
+
+.env
