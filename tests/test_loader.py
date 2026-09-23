@@ -8,10 +8,10 @@ def test_loads_all_corpus_files():
     documents = load_documents(DOCS_DIR)
     sources = {doc.metadata["source"] for doc in documents}
     assert sources == {
-        "hr_policies.md",
-        "it_security_policy.md",
-        "benefits_guide.md",
-        "onboarding_guide.md",
+        "python.md",
+        "databases.md",
+        "operating_systems.md",
+        "networks.md",
     }
 
 

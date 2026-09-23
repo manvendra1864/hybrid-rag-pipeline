@@ -13,8 +13,8 @@ from config import load_config
 from src.rag.bm25_retrieval import query_bm25
 from src.rag.dense_retrieval import query_dense
 
-EXACT_KEYWORD_QUERY = "What is policy HR-204?"
-SEMANTIC_QUERY = "Can I live somewhere else for a few weeks and keep working?"
+EXACT_KEYWORD_QUERY = "What is a foreign key in a database?"
+SEMANTIC_QUERY = "How can a program keep running smoothly even if a piece of user input turns out to be invalid?"
 
 
 def _print_results(label: str, results) -> None:
