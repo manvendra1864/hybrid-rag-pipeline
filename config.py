@@ -28,6 +28,11 @@ class Config:
 
     dense_top_k: int = 3
     bm25_top_k: int = 3
+    hybrid_top_k: int = 3
+
+    # Smoothing constant for reciprocal rank fusion. 60 is the value used
+    # in the original RRF paper and is not sensitive to small corpus size.
+    rrf_k: int = 60
 
 
 def load_config() -> Config:
@@ -41,4 +46,6 @@ def load_config() -> Config:
         embedding_model=os.environ.get("RAG_EMBEDDING_MODEL", Config.embedding_model),
         dense_top_k=int(os.environ.get("RAG_DENSE_TOP_K", Config.dense_top_k)),
         bm25_top_k=int(os.environ.get("RAG_BM25_TOP_K", Config.bm25_top_k)),
+        hybrid_top_k=int(os.environ.get("RAG_HYBRID_TOP_K", Config.hybrid_top_k)),
+        rrf_k=int(os.environ.get("RAG_RRF_K", Config.rrf_k)),
     )
