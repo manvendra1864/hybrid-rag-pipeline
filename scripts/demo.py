@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import load_config
 from src.rag.bm25_retrieval import query_bm25
 from src.rag.dense_retrieval import query_dense
+from src.rag.hybrid_retrieval import query_hybrid
 
 EXACT_KEYWORD_QUERY = "What is a foreign key in a database?"
 SEMANTIC_QUERY = "How can a program keep running smoothly even if a piece of user input turns out to be invalid?"
@@ -34,6 +35,8 @@ def main() -> None:
     _print_results("BM25", query_bm25(EXACT_KEYWORD_QUERY, config, k=3))
     print("\nDense:")
     _print_results("Dense", query_dense(EXACT_KEYWORD_QUERY, config, k=3))
+    print("\nHybrid (RRF):")
+    _print_results("Hybrid", query_hybrid(EXACT_KEYWORD_QUERY, config, k=3))
 
     print()
     print("=" * 70)
@@ -43,6 +46,8 @@ def main() -> None:
     _print_results("BM25", query_bm25(SEMANTIC_QUERY, config, k=3))
     print("\nDense:")
     _print_results("Dense", query_dense(SEMANTIC_QUERY, config, k=3))
+    print("\nHybrid (RRF):")
+    _print_results("Hybrid", query_hybrid(SEMANTIC_QUERY, config, k=3))
     print()
 
 
