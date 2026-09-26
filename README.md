@@ -2,8 +2,8 @@
 
 A small retrieval-augmented generation pipeline built with LangChain. It
 loads a set of documents, splits them into chunks, and lets you search
-those chunks with either dense (embedding) retrieval or BM25 (keyword)
-retrieval.
+those chunks with dense (embedding) retrieval, BM25 (keyword) retrieval,
+or a hybrid ranking that combines both.
 
 ## Tech stack
 
@@ -24,10 +24,12 @@ src/rag/chunker.py            Splits documents into chunks
 src/rag/chunk_store.py        Saves/loads chunks as JSON
 src/rag/dense_retrieval.py    Builds and queries the Chroma index
 src/rag/bm25_retrieval.py     BM25 query
+src/rag/hybrid_retrieval.py   Combines dense + BM25 rankings with RRF
 scripts/ingest.py             Loads, chunks, and builds the dense index
 scripts/query_dense.py        Run a dense query from the command line
 scripts/query_bm25.py         Run a BM25 query from the command line
-scripts/demo.py               Runs both methods on two example queries
+scripts/query_hybrid.py       Run a query through dense, BM25, and hybrid
+scripts/demo.py               Runs all three methods on two example queries
 tests/                        pytest suite
 storage/                      Generated index files (gitignored)
 ```
@@ -62,9 +64,15 @@ Run a BM25 query:
 python scripts/query_bm25.py "What is a foreign key?"
 ```
 
-Both accept `--k N` to change the number of results.
+Run a hybrid query (dense + BM25 combined with reciprocal rank fusion):
 
-Run the demo (compares both methods on two example queries):
+```bash
+python scripts/query_hybrid.py "How does a computer avoid running out of memory?"
+```
+
+All three accept `--k N` to change the number of results.
+
+Run the demo (compares all three methods on two example queries):
 
 ```bash
 python scripts/demo.py
@@ -86,6 +94,11 @@ python -m pytest -v
    chunks whose embeddings are closest to the query's.
 4. BM25 retrieval scores chunks by keyword overlap with the query,
    without using embeddings at all.
+5. Hybrid retrieval runs both methods and combines their rankings with
+   reciprocal rank fusion (RRF): each chunk gets a score based on its
+   rank position in each list (1 / (60 + rank)), added up across both
+   lists. A chunk found by both methods ranks higher than one found by
+   only one.
 
-Both methods search the same chunks, so their results can be compared
-directly. Combining the two into a single ranking is not done yet.
+All three methods search the same chunks, so their results can be
+compared directly.
