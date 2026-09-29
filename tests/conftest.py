@@ -19,6 +19,7 @@ def test_config(tmp_path):
         storage_dir=tmp_path,
         chroma_dir=tmp_path / "chroma",
         chunks_file=tmp_path / "chunks.json",
+        graph_file=tmp_path / "graph.json",
     )
 
 

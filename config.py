@@ -17,6 +17,7 @@ class Config:
     storage_dir: Path = PROJECT_ROOT / "storage"
     chroma_dir: Path = PROJECT_ROOT / "storage" / "chroma"
     chunks_file: Path = PROJECT_ROOT / "storage" / "chunks.json"
+    graph_file: Path = PROJECT_ROOT / "storage" / "graph.json"
 
     # Chunking. These are starting values for a demo-sized corpus, not
     # tuned for any particular document type.
@@ -41,6 +42,7 @@ def load_config() -> Config:
         storage_dir=Path(os.environ.get("RAG_STORAGE_DIR", Config.storage_dir)),
         chroma_dir=Path(os.environ.get("RAG_CHROMA_DIR", Config.chroma_dir)),
         chunks_file=Path(os.environ.get("RAG_CHUNKS_FILE", Config.chunks_file)),
+        graph_file=Path(os.environ.get("RAG_GRAPH_FILE", Config.graph_file)),
         chunk_size=int(os.environ.get("RAG_CHUNK_SIZE", Config.chunk_size)),
         chunk_overlap=int(os.environ.get("RAG_CHUNK_OVERLAP", Config.chunk_overlap)),
         embedding_model=os.environ.get("RAG_EMBEDDING_MODEL", Config.embedding_model),
