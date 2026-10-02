@@ -1,4 +1,4 @@
-"""Load the corpus, chunk it, and build the dense + BM25 indexes.
+"""Load the corpus, chunk it, and build the dense index and knowledge graph.
 
 Usage:
     python scripts/ingest.py
@@ -13,6 +13,7 @@ from config import load_config
 from src.rag.chunker import chunk_documents
 from src.rag.chunk_store import save_chunks
 from src.rag.dense_retrieval import build_dense_index
+from src.rag.knowledge_graph import build_graph, save_graph
 from src.rag.loader import load_documents
 
 
@@ -29,6 +30,13 @@ def main() -> None:
 
     save_chunks(chunks, config.chunks_file)
     print(f"Saved chunk store to {config.chunks_file}")
+
+    graph = build_graph(chunks)
+    save_graph(graph, config.graph_file)
+    print(
+        f"Built knowledge graph ({graph.number_of_nodes()} nodes, "
+        f"{graph.number_of_edges()} edges) at {config.graph_file}"
+    )
 
     print(f"Building dense index at {config.chroma_dir} with {config.embedding_model} ...")
     build_dense_index(chunks, config)
