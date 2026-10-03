@@ -13,6 +13,7 @@ or a hybrid ranking that combines both.
 - Chroma (vector store)
 - sentence-transformers (`all-MiniLM-L6-v2`) for embeddings
 - rank_bm25 for keyword scoring
+- NetworkX for the knowledge graph
 
 ## Project structure
 
@@ -25,10 +26,13 @@ src/rag/chunk_store.py        Saves/loads chunks as JSON
 src/rag/dense_retrieval.py    Builds and queries the Chroma index
 src/rag/bm25_retrieval.py     BM25 query
 src/rag/hybrid_retrieval.py   Combines dense + BM25 rankings with RRF
-scripts/ingest.py             Loads, chunks, and builds the dense index
+src/rag/graph_extraction.py   Finds sections and concept names in chunks
+src/rag/knowledge_graph.py    Builds, saves, and looks up the knowledge graph
+scripts/ingest.py             Loads, chunks, builds the dense index and graph
 scripts/query_dense.py        Run a dense query from the command line
 scripts/query_bm25.py         Run a BM25 query from the command line
 scripts/query_hybrid.py       Run a query through dense, BM25, and hybrid
+scripts/query_graph.py        Look up concepts in the knowledge graph
 scripts/demo.py               Runs all three methods on two example queries
 tests/                        pytest suite
 storage/                      Generated index files (gitignored)
@@ -46,7 +50,7 @@ The first run downloads the embedding model and caches it locally.
 
 ## Usage
 
-Build the chunk store and dense index:
+Build the chunk store, dense index, and knowledge graph:
 
 ```bash
 python scripts/ingest.py
@@ -71,6 +75,12 @@ python scripts/query_hybrid.py "How does a computer avoid running out of memory?
 ```
 
 All three accept `--k N` to change the number of results.
+
+Look up concepts in the knowledge graph (run without a query for a summary):
+
+```bash
+python scripts/query_graph.py "What is a foreign key?"
+```
 
 Run the demo (compares all three methods on two example queries):
 
@@ -102,3 +112,17 @@ python -m pytest -v
 
 All three methods search the same chunks, so their results can be
 compared directly.
+
+The knowledge graph is built from the same chunks during ingestion:
+
+- Each `## Heading` in a document is a concept (for example "Foreign
+  Keys"). Concepts are linked to their document and to the chunks that
+  hold their text.
+- If the text under one concept names another concept from the same
+  file, the first concept gets a `mentions` edge to the second, with the
+  chunk ids where it was found.
+- Names are matched by simple rules (headings and plural forms), not by
+  a language model.
+- The graph is saved to `storage/graph.json`. Chunk nodes use the same
+  chunk ids as retrieval, but the graph is not part of the retrieval
+  ranking yet.
