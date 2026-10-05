@@ -35,6 +35,12 @@ class Config:
     # in the original RRF paper and is not sensitive to small corpus size.
     rrf_k: int = 60
 
+    # Graph-enhanced retrieval. graph_weight scales the graph's vote in
+    # fusion relative to dense and BM25 (1.0 = equal), so the graph can
+    # nudge the ranking without overriding the other two.
+    graph_top_k: int = 3
+    graph_weight: float = 0.5
+
 
 def load_config() -> Config:
     return Config(
@@ -50,4 +56,6 @@ def load_config() -> Config:
         bm25_top_k=int(os.environ.get("RAG_BM25_TOP_K", Config.bm25_top_k)),
         hybrid_top_k=int(os.environ.get("RAG_HYBRID_TOP_K", Config.hybrid_top_k)),
         rrf_k=int(os.environ.get("RAG_RRF_K", Config.rrf_k)),
+        graph_top_k=int(os.environ.get("RAG_GRAPH_TOP_K", Config.graph_top_k)),
+        graph_weight=float(os.environ.get("RAG_GRAPH_WEIGHT", Config.graph_weight)),
     )

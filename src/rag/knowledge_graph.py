@@ -7,7 +7,10 @@ Nodes:
 
 Edges:
     document -contains->   concept
-    concept  -covered_in-> chunk     the chunk holds part of that section
+    concept  -covered_in-> chunk     the chunk holds part of that section;
+                                     share is the fraction of the section's
+                                     text that sits in this chunk (0 when
+                                     the chunk only ends with its heading)
     concept  -mentions->   concept   the section text names another concept
                                      from the same file (chunk_ids records
                                      where)
@@ -24,6 +27,8 @@ from pathlib import Path
 import networkx as nx
 from langchain_core.documents import Document
 
+from config import Config
+from src.rag.chunk_store import load_chunks
 from src.rag.graph_extraction import (
     concept_aliases,
     mentions_alias,
@@ -40,8 +45,9 @@ def _concept_id(source: str, heading: str) -> str:
 def build_graph(chunks: list[Document]) -> nx.DiGraph:
     graph = nx.DiGraph()
     segments = split_sections(chunks)
+    section_chars: dict[tuple[str, str], int] = defaultdict(int)
 
-    for source, section, chunk_id, _ in segments:
+    for source, section, chunk_id, text in segments:
         document_node = f"doc:{source}"
         chunk_node = f"chunk:{chunk_id}"
         graph.add_node(document_node, type="document", label=source)
@@ -58,6 +64,14 @@ def build_graph(chunks: list[Document]) -> nx.DiGraph:
             )
             graph.add_edge(document_node, concept_node, relation="contains")
             graph.add_edge(concept_node, chunk_node, relation="covered_in")
+            section_chars[(concept_node, chunk_node)] += len(text)
+
+    totals: dict[str, int] = defaultdict(int)
+    for (concept_node, _), chars in section_chars.items():
+        totals[concept_node] += chars
+    for (concept_node, chunk_node), chars in section_chars.items():
+        share = chars / totals[concept_node] if totals[concept_node] else 0.0
+        graph.edges[concept_node, chunk_node]["share"] = share
 
     concepts = {
         node: (data["source"], data["aliases"])
@@ -135,3 +149,69 @@ def describe_concept(graph: nx.DiGraph, node: str) -> dict:
             label(n) for _, n, d in graph.out_edges(node, data=True) if d["relation"] == "covered_in"
         ),
     }
+
+
+def graph_chunk_scores(graph: nx.DiGraph, query: str) -> list[tuple[str, float]]:
+    """Rank chunk_ids by how directly the graph ties them to the query.
+
+    Chunks of concepts named in the query come first, scored by the share
+    of each concept's text they hold (summed over matched concepts). After
+    them come chunks of concepts one `mentions` edge away (either
+    direction), scored the same way. A related concept's chunk never
+    outranks a chunk of a concept the query named. Chunks holding none of
+    a concept's text, such as one that only ends with its heading, are
+    left out. Ties keep document order. Returns [] if the query names no
+    concept.
+    """
+    seeds = find_concepts(graph, query)
+    if not seeds:
+        return []
+
+    neighbours: set[str] = set()
+    for seed in seeds:
+        for _, other, data in graph.out_edges(seed, data=True):
+            if data["relation"] == "mentions":
+                neighbours.add(other)
+        for other, _, data in graph.in_edges(seed, data=True):
+            if data["relation"] == "mentions":
+                neighbours.add(other)
+    neighbours -= set(seeds)
+
+    def chunk_shares(concepts) -> dict[str, float]:
+        shares: dict[str, float] = defaultdict(float)
+        for concept in concepts:
+            for _, chunk_node, data in graph.out_edges(concept, data=True):
+                if data["relation"] == "covered_in" and data.get("share", 1.0) > 0:
+                    shares[chunk_node] += data.get("share", 1.0)
+        return shares
+
+    direct = chunk_shares(seeds)
+    related = {
+        node: score
+        for node, score in chunk_shares(sorted(neighbours)).items()
+        if node not in direct
+    }
+
+    position = {node: i for i, node in enumerate(graph.nodes)}
+    ranked = [
+        node
+        for group in (direct, related)
+        for node in sorted(group, key=lambda n: (-group[n], position[n]))
+    ]
+    scores = {**related, **direct}
+    return [(graph.nodes[node]["label"], scores[node]) for node in ranked]
+
+
+def query_graph(
+    query: str, config: Config, k: int | None = None
+) -> list[tuple[Document, float]]:
+    """Return (chunk, graph_score) pairs ordered best first.
+
+    Empty when the query names no concept in the graph.
+    """
+    graph = load_graph(config.graph_file)
+    chunks = {c.metadata["chunk_id"]: c for c in load_chunks(config.chunks_file)}
+    scored = graph_chunk_scores(graph, query)
+
+    top_k = k or config.graph_top_k
+    return [(chunks[cid], score) for cid, score in scored if cid in chunks][:top_k]
