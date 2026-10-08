@@ -1,4 +1,4 @@
-"""Week 4 demonstration: run both retrieval methods on two contrasting queries.
+"""Demonstration: run each retrieval method on a few contrasting queries.
 
 Run scripts/ingest.py first. Then:
     python scripts/demo.py
@@ -16,6 +16,7 @@ from src.rag.hybrid_retrieval import query_hybrid
 
 EXACT_KEYWORD_QUERY = "What is a foreign key in a database?"
 SEMANTIC_QUERY = "How can a program keep running smoothly even if a piece of user input turns out to be invalid?"
+GRAPH_QUERY = "What does DNS do when I open a website?"
 
 
 def _print_results(label: str, results) -> None:
@@ -28,27 +29,25 @@ def _print_results(label: str, results) -> None:
 def main() -> None:
     config = load_config()
 
-    print("=" * 70)
-    print(f'Query 1 (exact keyword): "{EXACT_KEYWORD_QUERY}"')
-    print("=" * 70)
-    print("\nBM25:")
-    _print_results("BM25", query_bm25(EXACT_KEYWORD_QUERY, config, k=3))
-    print("\nDense:")
-    _print_results("Dense", query_dense(EXACT_KEYWORD_QUERY, config, k=3))
-    print("\nHybrid (RRF):")
-    _print_results("Hybrid", query_hybrid(EXACT_KEYWORD_QUERY, config, k=3))
+    examples = [
+        ("Query 1 (exact keyword)", EXACT_KEYWORD_QUERY),
+        ("Query 2 (semantic paraphrase, names no concept)", SEMANTIC_QUERY),
+        ("Query 3 (concept with a related concept)", GRAPH_QUERY),
+    ]
 
-    print()
-    print("=" * 70)
-    print(f'Query 2 (semantic paraphrase): "{SEMANTIC_QUERY}"')
-    print("=" * 70)
-    print("\nBM25:")
-    _print_results("BM25", query_bm25(SEMANTIC_QUERY, config, k=3))
-    print("\nDense:")
-    _print_results("Dense", query_dense(SEMANTIC_QUERY, config, k=3))
-    print("\nHybrid (RRF):")
-    _print_results("Hybrid", query_hybrid(SEMANTIC_QUERY, config, k=3))
-    print()
+    for title, query in examples:
+        print("=" * 70)
+        print(f'{title}: "{query}"')
+        print("=" * 70)
+        print("\nBM25:")
+        _print_results("BM25", query_bm25(query, config, k=3))
+        print("\nDense:")
+        _print_results("Dense", query_dense(query, config, k=3))
+        print("\nHybrid (RRF):")
+        _print_results("Hybrid", query_hybrid(query, config, k=3))
+        print("\nGraph-enhanced hybrid (RRF + knowledge graph):")
+        _print_results("Graph", query_hybrid(query, config, k=3, use_graph=True))
+        print()
 
 
 if __name__ == "__main__":
