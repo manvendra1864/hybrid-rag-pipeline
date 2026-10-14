@@ -41,6 +41,10 @@ class Config:
     graph_top_k: int = 3
     graph_weight: float = 0.5
 
+    # Gemini model used by scripts/ask.py. The API key is read from the
+    # environment (GEMINI_API_KEY or GOOGLE_API_KEY), never stored here.
+    llm_model: str = "gemini-3.8-flash"
+
 
 def load_config() -> Config:
     return Config(
@@ -58,4 +62,5 @@ def load_config() -> Config:
         rrf_k=int(os.environ.get("RAG_RRF_K", Config.rrf_k)),
         graph_top_k=int(os.environ.get("RAG_GRAPH_TOP_K", Config.graph_top_k)),
         graph_weight=float(os.environ.get("RAG_GRAPH_WEIGHT", Config.graph_weight)),
+        llm_model=os.environ.get("RAG_LLM_MODEL", Config.llm_model),
     )
