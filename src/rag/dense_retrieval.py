@@ -1,6 +1,7 @@
 """Embedding-based retrieval backed by a local Chroma vector store."""
 
 import shutil
+from functools import lru_cache
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
@@ -9,11 +10,17 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from config import Config
 
 
-def get_embeddings(config: Config) -> HuggingFaceEmbeddings:
+@lru_cache(maxsize=None)
+def _load_embeddings(model_name: str) -> HuggingFaceEmbeddings:
     return HuggingFaceEmbeddings(
-        model_name=config.embedding_model,
+        model_name=model_name,
         model_kwargs={"device": "cpu"},
     )
+
+
+def get_embeddings(config: Config) -> HuggingFaceEmbeddings:
+    # Loading the model takes seconds, so reuse it across queries in one process.
+    return _load_embeddings(config.embedding_model)
 
 
 def build_dense_index(chunks: list[Document], config: Config) -> None:
