@@ -1,0 +1,41 @@
+# Retrieval evaluation results
+
+20 questions, top 3 results per method. Corpus: 4 documents, 31 chunks.
+
+Recall@3 is the share of a question's relevant chunks found in the top 3. MRR is the average of 1 / rank of the first relevant chunk in the top 3 (0 if none). A miss means no relevant chunk was in the top results. See `evaluation/README.md` for the limits of these numbers.
+
+## Aggregate results
+
+| Method | Recall@3 | MRR | Misses |
+|---|---|---|---|
+| Dense | 1.000 | 0.975 | 0 / 20 |
+| BM25 | 0.925 | 0.917 | 0 / 20 |
+| Hybrid | 1.000 | 0.975 | 0 / 20 |
+| Graph-enhanced hybrid | 1.000 | 0.950 | 0 / 20 |
+
+## Per question
+
+Relevant chunks that were retrieved are in bold.
+
+| ID | Question | Relevant | Dense | BM25 | Hybrid | Graph-enhanced hybrid |
+|---|---|---|---|---|---|---|
+| q01 | What is a primary key? | databases-p1-c2 | 1. **databases-p1-c2**<br>2. databases-p1-c3<br>3. databases-p1-c1 | 1. **databases-p1-c2**<br>2. databases-p1-c3<br>3. databases-p1-c1 | 1. **databases-p1-c2**<br>2. databases-p1-c3<br>3. databases-p1-c1 | 1. **databases-p1-c2**<br>2. databases-p1-c3<br>3. databases-p1-c1 |
+| q02 | How does a foreign key link two tables together? | databases-p1-c3 | 1. **databases-p1-c3**<br>2. databases-p1-c5<br>3. databases-p1-c2 | 1. **databases-p1-c3**<br>2. databases-p1-c5<br>3. databases-p1-c2 | 1. **databases-p1-c3**<br>2. databases-p1-c5<br>3. databases-p1-c2 | 1. **databases-p1-c3**<br>2. databases-p1-c2<br>3. databases-p1-c5 |
+| q03 | Why does searching a big table get slow, and what speeds it up? | databases-p1-c8 | 1. **databases-p1-c8**<br>2. databases-p1-c1<br>3. databases-p1-c0 | 1. **databases-p1-c8**<br>2. operating_systems-p1-c3<br>3. databases-p1-c1 | 1. **databases-p1-c8**<br>2. databases-p1-c1<br>3. operating_systems-p1-c3 | 1. databases-p1-c1<br>2. **databases-p1-c8**<br>3. operating_systems-p1-c3 |
+| q04 | What is the main idea behind normalization? | databases-p1-c6<br>databases-p1-c7 | 1. **databases-p1-c7**<br>2. **databases-p1-c6**<br>3. databases-p1-c5 | 1. **databases-p1-c7**<br>2. networks-p1-c6<br>3. **databases-p1-c6** | 1. **databases-p1-c7**<br>2. **databases-p1-c6**<br>3. networks-p1-c6 | 1. **databases-p1-c7**<br>2. **databases-p1-c6**<br>3. networks-p1-c6 |
+| q05 | Which SQL statement removes rows from a table? | databases-p1-c5 | 1. databases-p1-c4<br>2. **databases-p1-c5**<br>3. databases-p1-c1 | 1. **databases-p1-c5**<br>2. databases-p1-c4<br>3. databases-p1-c3 | 1. databases-p1-c4<br>2. **databases-p1-c5**<br>3. databases-p1-c1 | 1. databases-p1-c4<br>2. **databases-p1-c5**<br>3. databases-p1-c1 |
+| q06 | Why do video calls prefer UDP over TCP? | networks-p1-c2<br>networks-p1-c3 | 1. **networks-p1-c2**<br>2. **networks-p1-c3**<br>3. networks-p1-c1 | 1. **networks-p1-c2**<br>2. **networks-p1-c3**<br>3. networks-p1-c1 | 1. **networks-p1-c2**<br>2. **networks-p1-c3**<br>3. networks-p1-c1 | 1. **networks-p1-c2**<br>2. **networks-p1-c3**<br>3. networks-p1-c1 |
+| q07 | What does DNS do? | networks-p1-c5 | 1. **networks-p1-c5**<br>2. networks-p1-c4<br>3. networks-p1-c1 | 1. **networks-p1-c5**<br>2. python-p1-c6<br>3. networks-p1-c4 | 1. **networks-p1-c5**<br>2. networks-p1-c4<br>3. python-p1-c6 | 1. **networks-p1-c5**<br>2. networks-p1-c4<br>3. networks-p1-c1 |
+| q08 | How is HTTPS different from HTTP? | networks-p1-c6 | 1. **networks-p1-c6**<br>2. networks-p1-c4<br>3. networks-p1-c5 | 1. **networks-p1-c6**<br>2. databases-p1-c3<br>3. databases-p1-c4 | 1. **networks-p1-c6**<br>2. networks-p1-c4<br>3. databases-p1-c3 | 1. **networks-p1-c6**<br>2. networks-p1-c4<br>3. databases-p1-c3 |
+| q09 | Which device passes data from my home network on to the wider internet? | networks-p1-c7 | 1. **networks-p1-c7**<br>2. networks-p1-c1<br>3. networks-p1-c0 | 1. **networks-p1-c7**<br>2. networks-p1-c1<br>3. networks-p1-c0 | 1. **networks-p1-c7**<br>2. networks-p1-c1<br>3. networks-p1-c0 | 1. **networks-p1-c7**<br>2. networks-p1-c1<br>3. networks-p1-c0 |
+| q10 | What are ports 80 and 443 used for? | networks-p1-c4 | 1. **networks-p1-c4**<br>2. networks-p1-c6<br>3. networks-p1-c1 | 1. **networks-p1-c4**<br>2. python-p1-c4<br>3. databases-p1-c4 | 1. **networks-p1-c4**<br>2. networks-p1-c6<br>3. python-p1-c4 | 1. **networks-p1-c4**<br>2. networks-p1-c1<br>3. networks-p1-c6 |
+| q11 | What does an IPv4 address look like? | networks-p1-c1 | 1. **networks-p1-c1**<br>2. networks-p1-c5<br>3. networks-p1-c0 | 1. **networks-p1-c1**<br>2. networks-p1-c5<br>3. databases-p1-c6 | 1. **networks-p1-c1**<br>2. networks-p1-c5<br>3. networks-p1-c0 | 1. **networks-p1-c1**<br>2. networks-p1-c5<br>3. networks-p1-c0 |
+| q12 | How is a process different from a thread? | operating_systems-p1-c1<br>operating_systems-p1-c2 | 1. **operating_systems-p1-c2**<br>2. **operating_systems-p1-c1**<br>3. operating_systems-p1-c5 | 1. operating_systems-p1-c5<br>2. **operating_systems-p1-c2**<br>3. databases-p1-c3 | 1. **operating_systems-p1-c2**<br>2. operating_systems-p1-c5<br>3. **operating_systems-p1-c1** | 1. **operating_systems-p1-c2**<br>2. operating_systems-p1-c5<br>3. **operating_systems-p1-c1** |
+| q13 | How can a computer run more programs than fit in its RAM? | operating_systems-p1-c3<br>operating_systems-p1-c4 | 1. **operating_systems-p1-c4**<br>2. **operating_systems-p1-c3**<br>3. operating_systems-p1-c1 | 1. **operating_systems-p1-c3**<br>2. **operating_systems-p1-c4**<br>3. operating_systems-p1-c2 | 1. **operating_systems-p1-c4**<br>2. **operating_systems-p1-c3**<br>3. operating_systems-p1-c1 | 1. **operating_systems-p1-c4**<br>2. **operating_systems-p1-c3**<br>3. operating_systems-p1-c1 |
+| q14 | What is a context switch? | operating_systems-p1-c5 | 1. **operating_systems-p1-c5**<br>2. operating_systems-p1-c1<br>3. operating_systems-p1-c2 | 1. **operating_systems-p1-c5**<br>2. python-p1-c0<br>3. networks-p1-c4 | 1. **operating_systems-p1-c5**<br>2. operating_systems-p1-c1<br>3. python-p1-c0 | 1. **operating_systems-p1-c5**<br>2. operating_systems-p1-c1<br>3. python-p1-c0 |
+| q15 | What information does a file system keep about each file? | operating_systems-p1-c6 | 1. **operating_systems-p1-c6**<br>2. databases-p1-c0<br>3. operating_systems-p1-c3 | 1. **operating_systems-p1-c6**<br>2. operating_systems-p1-c5<br>3. operating_systems-p1-c1 | 1. **operating_systems-p1-c6**<br>2. databases-p1-c0<br>3. operating_systems-p1-c5 | 1. **operating_systems-p1-c6**<br>2. databases-p1-c0<br>3. operating_systems-p1-c5 |
+| q16 | How can a program keep running when something unexpected goes wrong? | python-p1-c5<br>python-p1-c6 | 1. **python-p1-c6**<br>2. **python-p1-c5**<br>3. operating_systems-p1-c1 | 1. operating_systems-p1-c6<br>2. **python-p1-c5**<br>3. operating_systems-p1-c1 | 1. **python-p1-c5**<br>2. operating_systems-p1-c1<br>3. **python-p1-c6** | 1. **python-p1-c5**<br>2. operating_systems-p1-c1<br>3. **python-p1-c6** |
+| q17 | Can a tuple be changed after it is created? | python-p1-c2 | 1. **python-p1-c2**<br>2. python-p1-c1<br>3. databases-p1-c2 | 1. **python-p1-c2**<br>2. databases-p1-c2<br>3. databases-p1-c6 | 1. **python-p1-c2**<br>2. databases-p1-c2<br>3. python-p1-c1 | 1. **python-p1-c2**<br>2. databases-p1-c2<br>3. python-p1-c1 |
+| q18 | What does a function give back if it has no return statement? | python-p1-c3 | 1. **python-p1-c3**<br>2. python-p1-c6<br>3. python-p1-c5 | 1. **python-p1-c3**<br>2. databases-p1-c2<br>3. databases-p1-c8 | 1. **python-p1-c3**<br>2. python-p1-c6<br>3. databases-p1-c2 | 1. **python-p1-c3**<br>2. python-p1-c6<br>3. databases-p1-c2 |
+| q19 | What causes an IndentationError? | python-p1-c4 | 1. **python-p1-c4**<br>2. python-p1-c6<br>3. python-p1-c5 | 1. **python-p1-c4**<br>2. networks-p1-c1<br>3. databases-p1-c8 | 1. **python-p1-c4**<br>2. python-p1-c6<br>3. networks-p1-c1 | 1. **python-p1-c4**<br>2. python-p1-c6<br>3. networks-p1-c1 |
+| q20 | Which two protocols does a browser rely on to find a website and fetch its page? | networks-p1-c5<br>networks-p1-c6 | 1. **networks-p1-c5**<br>2. **networks-p1-c6**<br>3. networks-p1-c4 | 1. operating_systems-p1-c1<br>2. networks-p1-c4<br>3. **networks-p1-c6** | 1. **networks-p1-c6**<br>2. networks-p1-c4<br>3. **networks-p1-c5** | 1. **networks-p1-c6**<br>2. networks-p1-c4<br>3. **networks-p1-c5** |

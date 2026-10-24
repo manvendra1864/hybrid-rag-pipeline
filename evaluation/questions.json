@@ -1,0 +1,148 @@
+[
+  {
+    "id": "q01",
+    "question": "What is a primary key?",
+    "relevant": [
+      {"chunk_id": "databases-p1-c2", "evidence": "whose value uniquely identifies each row"}
+    ]
+  },
+  {
+    "id": "q02",
+    "question": "How does a foreign key link two tables together?",
+    "relevant": [
+      {"chunk_id": "databases-p1-c3", "evidence": "points to the primary key"}
+    ]
+  },
+  {
+    "id": "q03",
+    "question": "Why does searching a big table get slow, and what speeds it up?",
+    "relevant": [
+      {"chunk_id": "databases-p1-c8", "evidence": "find matching rows faster"}
+    ]
+  },
+  {
+    "id": "q04",
+    "question": "What is the main idea behind normalization?",
+    "relevant": [
+      {"chunk_id": "databases-p1-c6", "evidence": "Splitting data this way to avoid duplication"},
+      {"chunk_id": "databases-p1-c7", "evidence": "main idea behind normalization"}
+    ]
+  },
+  {
+    "id": "q05",
+    "question": "Which SQL statement removes rows from a table?",
+    "relevant": [
+      {"chunk_id": "databases-p1-c5", "evidence": "`DELETE` removes rows"}
+    ]
+  },
+  {
+    "id": "q06",
+    "question": "Why do video calls prefer UDP over TCP?",
+    "relevant": [
+      {"chunk_id": "networks-p1-c2", "evidence": "UDP sends data without that checking"},
+      {"chunk_id": "networks-p1-c3", "evidence": "dropped frame here and there"}
+    ]
+  },
+  {
+    "id": "q07",
+    "question": "What does DNS do?",
+    "relevant": [
+      {"chunk_id": "networks-p1-c5", "evidence": "translates human-friendly names"}
+    ]
+  },
+  {
+    "id": "q08",
+    "question": "How is HTTPS different from HTTP?",
+    "relevant": [
+      {"chunk_id": "networks-p1-c6", "evidence": "HTTPS is the same idea but encrypted"}
+    ]
+  },
+  {
+    "id": "q09",
+    "question": "Which device passes data from my home network on to the wider internet?",
+    "relevant": [
+      {"chunk_id": "networks-p1-c7", "evidence": "A home router connects the devices in a house"}
+    ]
+  },
+  {
+    "id": "q10",
+    "question": "What are ports 80 and 443 used for?",
+    "relevant": [
+      {"chunk_id": "networks-p1-c4", "evidence": "port 80 for regular traffic and port 443"}
+    ]
+  },
+  {
+    "id": "q11",
+    "question": "What does an IPv4 address look like?",
+    "relevant": [
+      {"chunk_id": "networks-p1-c1", "evidence": "four numbers separated by dots"}
+    ]
+  },
+  {
+    "id": "q12",
+    "question": "How is a process different from a thread?",
+    "relevant": [
+      {"chunk_id": "operating_systems-p1-c1", "evidence": "A process is a running instance of a program"},
+      {"chunk_id": "operating_systems-p1-c2", "evidence": "A thread is a unit of execution that lives inside a process"}
+    ]
+  },
+  {
+    "id": "q13",
+    "question": "How can a computer run more programs than fit in its RAM?",
+    "relevant": [
+      {"chunk_id": "operating_systems-p1-c3", "evidence": "move rarely used data out to disk"},
+      {"chunk_id": "operating_systems-p1-c4", "evidence": "programs than would actually fit in RAM"}
+    ]
+  },
+  {
+    "id": "q14",
+    "question": "What is a context switch?",
+    "relevant": [
+      {"chunk_id": "operating_systems-p1-c5", "evidence": "Switching the CPU from one process to another is called a"}
+    ]
+  },
+  {
+    "id": "q15",
+    "question": "What information does a file system keep about each file?",
+    "relevant": [
+      {"chunk_id": "operating_systems-p1-c6", "evidence": "tracks metadata such as file size, permissions"}
+    ]
+  },
+  {
+    "id": "q16",
+    "question": "How can a program keep running when something unexpected goes wrong?",
+    "relevant": [
+      {"chunk_id": "python-p1-c5", "evidence": "Python reports these problems by raising"},
+      {"chunk_id": "python-p1-c6", "evidence": "lets the program recover instead of crashing"}
+    ]
+  },
+  {
+    "id": "q17",
+    "question": "Can a tuple be changed after it is created?",
+    "relevant": [
+      {"chunk_id": "python-p1-c2", "evidence": "cannot be modified once created"}
+    ]
+  },
+  {
+    "id": "q18",
+    "question": "What does a function give back if it has no return statement?",
+    "relevant": [
+      {"chunk_id": "python-p1-c3", "evidence": "it returns `None` by default"}
+    ]
+  },
+  {
+    "id": "q19",
+    "question": "What causes an IndentationError?",
+    "relevant": [
+      {"chunk_id": "python-p1-c4", "evidence": "causes an `IndentationError`"}
+    ]
+  },
+  {
+    "id": "q20",
+    "question": "Which two protocols does a browser rely on to find a website and fetch its page?",
+    "relevant": [
+      {"chunk_id": "networks-p1-c5", "evidence": "DNS (Domain Name System)"},
+      {"chunk_id": "networks-p1-c6", "evidence": "HTTP is the protocol that web browsers and servers"}
+    ]
+  }
+]

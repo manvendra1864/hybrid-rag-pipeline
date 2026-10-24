@@ -1,0 +1,81 @@
+question_id,method,relevant_ids,retrieved_ids,recall_at_3,reciprocal_rank
+q01,Dense,databases-p1-c2,databases-p1-c2 databases-p1-c3 databases-p1-c1,1.0000,1.0000
+q01,BM25,databases-p1-c2,databases-p1-c2 databases-p1-c3 databases-p1-c1,1.0000,1.0000
+q01,Hybrid,databases-p1-c2,databases-p1-c2 databases-p1-c3 databases-p1-c1,1.0000,1.0000
+q01,Graph-enhanced hybrid,databases-p1-c2,databases-p1-c2 databases-p1-c3 databases-p1-c1,1.0000,1.0000
+q02,Dense,databases-p1-c3,databases-p1-c3 databases-p1-c5 databases-p1-c2,1.0000,1.0000
+q02,BM25,databases-p1-c3,databases-p1-c3 databases-p1-c5 databases-p1-c2,1.0000,1.0000
+q02,Hybrid,databases-p1-c3,databases-p1-c3 databases-p1-c5 databases-p1-c2,1.0000,1.0000
+q02,Graph-enhanced hybrid,databases-p1-c3,databases-p1-c3 databases-p1-c2 databases-p1-c5,1.0000,1.0000
+q03,Dense,databases-p1-c8,databases-p1-c8 databases-p1-c1 databases-p1-c0,1.0000,1.0000
+q03,BM25,databases-p1-c8,databases-p1-c8 operating_systems-p1-c3 databases-p1-c1,1.0000,1.0000
+q03,Hybrid,databases-p1-c8,databases-p1-c8 databases-p1-c1 operating_systems-p1-c3,1.0000,1.0000
+q03,Graph-enhanced hybrid,databases-p1-c8,databases-p1-c1 databases-p1-c8 operating_systems-p1-c3,1.0000,0.5000
+q04,Dense,databases-p1-c6 databases-p1-c7,databases-p1-c7 databases-p1-c6 databases-p1-c5,1.0000,1.0000
+q04,BM25,databases-p1-c6 databases-p1-c7,databases-p1-c7 networks-p1-c6 databases-p1-c6,1.0000,1.0000
+q04,Hybrid,databases-p1-c6 databases-p1-c7,databases-p1-c7 databases-p1-c6 networks-p1-c6,1.0000,1.0000
+q04,Graph-enhanced hybrid,databases-p1-c6 databases-p1-c7,databases-p1-c7 databases-p1-c6 networks-p1-c6,1.0000,1.0000
+q05,Dense,databases-p1-c5,databases-p1-c4 databases-p1-c5 databases-p1-c1,1.0000,0.5000
+q05,BM25,databases-p1-c5,databases-p1-c5 databases-p1-c4 databases-p1-c3,1.0000,1.0000
+q05,Hybrid,databases-p1-c5,databases-p1-c4 databases-p1-c5 databases-p1-c1,1.0000,0.5000
+q05,Graph-enhanced hybrid,databases-p1-c5,databases-p1-c4 databases-p1-c5 databases-p1-c1,1.0000,0.5000
+q06,Dense,networks-p1-c2 networks-p1-c3,networks-p1-c2 networks-p1-c3 networks-p1-c1,1.0000,1.0000
+q06,BM25,networks-p1-c2 networks-p1-c3,networks-p1-c2 networks-p1-c3 networks-p1-c1,1.0000,1.0000
+q06,Hybrid,networks-p1-c2 networks-p1-c3,networks-p1-c2 networks-p1-c3 networks-p1-c1,1.0000,1.0000
+q06,Graph-enhanced hybrid,networks-p1-c2 networks-p1-c3,networks-p1-c2 networks-p1-c3 networks-p1-c1,1.0000,1.0000
+q07,Dense,networks-p1-c5,networks-p1-c5 networks-p1-c4 networks-p1-c1,1.0000,1.0000
+q07,BM25,networks-p1-c5,networks-p1-c5 python-p1-c6 networks-p1-c4,1.0000,1.0000
+q07,Hybrid,networks-p1-c5,networks-p1-c5 networks-p1-c4 python-p1-c6,1.0000,1.0000
+q07,Graph-enhanced hybrid,networks-p1-c5,networks-p1-c5 networks-p1-c4 networks-p1-c1,1.0000,1.0000
+q08,Dense,networks-p1-c6,networks-p1-c6 networks-p1-c4 networks-p1-c5,1.0000,1.0000
+q08,BM25,networks-p1-c6,networks-p1-c6 databases-p1-c3 databases-p1-c4,1.0000,1.0000
+q08,Hybrid,networks-p1-c6,networks-p1-c6 networks-p1-c4 databases-p1-c3,1.0000,1.0000
+q08,Graph-enhanced hybrid,networks-p1-c6,networks-p1-c6 networks-p1-c4 databases-p1-c3,1.0000,1.0000
+q09,Dense,networks-p1-c7,networks-p1-c7 networks-p1-c1 networks-p1-c0,1.0000,1.0000
+q09,BM25,networks-p1-c7,networks-p1-c7 networks-p1-c1 networks-p1-c0,1.0000,1.0000
+q09,Hybrid,networks-p1-c7,networks-p1-c7 networks-p1-c1 networks-p1-c0,1.0000,1.0000
+q09,Graph-enhanced hybrid,networks-p1-c7,networks-p1-c7 networks-p1-c1 networks-p1-c0,1.0000,1.0000
+q10,Dense,networks-p1-c4,networks-p1-c4 networks-p1-c6 networks-p1-c1,1.0000,1.0000
+q10,BM25,networks-p1-c4,networks-p1-c4 python-p1-c4 databases-p1-c4,1.0000,1.0000
+q10,Hybrid,networks-p1-c4,networks-p1-c4 networks-p1-c6 python-p1-c4,1.0000,1.0000
+q10,Graph-enhanced hybrid,networks-p1-c4,networks-p1-c4 networks-p1-c1 networks-p1-c6,1.0000,1.0000
+q11,Dense,networks-p1-c1,networks-p1-c1 networks-p1-c5 networks-p1-c0,1.0000,1.0000
+q11,BM25,networks-p1-c1,networks-p1-c1 networks-p1-c5 databases-p1-c6,1.0000,1.0000
+q11,Hybrid,networks-p1-c1,networks-p1-c1 networks-p1-c5 networks-p1-c0,1.0000,1.0000
+q11,Graph-enhanced hybrid,networks-p1-c1,networks-p1-c1 networks-p1-c5 networks-p1-c0,1.0000,1.0000
+q12,Dense,operating_systems-p1-c1 operating_systems-p1-c2,operating_systems-p1-c2 operating_systems-p1-c1 operating_systems-p1-c5,1.0000,1.0000
+q12,BM25,operating_systems-p1-c1 operating_systems-p1-c2,operating_systems-p1-c5 operating_systems-p1-c2 databases-p1-c3,0.5000,0.5000
+q12,Hybrid,operating_systems-p1-c1 operating_systems-p1-c2,operating_systems-p1-c2 operating_systems-p1-c5 operating_systems-p1-c1,1.0000,1.0000
+q12,Graph-enhanced hybrid,operating_systems-p1-c1 operating_systems-p1-c2,operating_systems-p1-c2 operating_systems-p1-c5 operating_systems-p1-c1,1.0000,1.0000
+q13,Dense,operating_systems-p1-c3 operating_systems-p1-c4,operating_systems-p1-c4 operating_systems-p1-c3 operating_systems-p1-c1,1.0000,1.0000
+q13,BM25,operating_systems-p1-c3 operating_systems-p1-c4,operating_systems-p1-c3 operating_systems-p1-c4 operating_systems-p1-c2,1.0000,1.0000
+q13,Hybrid,operating_systems-p1-c3 operating_systems-p1-c4,operating_systems-p1-c4 operating_systems-p1-c3 operating_systems-p1-c1,1.0000,1.0000
+q13,Graph-enhanced hybrid,operating_systems-p1-c3 operating_systems-p1-c4,operating_systems-p1-c4 operating_systems-p1-c3 operating_systems-p1-c1,1.0000,1.0000
+q14,Dense,operating_systems-p1-c5,operating_systems-p1-c5 operating_systems-p1-c1 operating_systems-p1-c2,1.0000,1.0000
+q14,BM25,operating_systems-p1-c5,operating_systems-p1-c5 python-p1-c0 networks-p1-c4,1.0000,1.0000
+q14,Hybrid,operating_systems-p1-c5,operating_systems-p1-c5 operating_systems-p1-c1 python-p1-c0,1.0000,1.0000
+q14,Graph-enhanced hybrid,operating_systems-p1-c5,operating_systems-p1-c5 operating_systems-p1-c1 python-p1-c0,1.0000,1.0000
+q15,Dense,operating_systems-p1-c6,operating_systems-p1-c6 databases-p1-c0 operating_systems-p1-c3,1.0000,1.0000
+q15,BM25,operating_systems-p1-c6,operating_systems-p1-c6 operating_systems-p1-c5 operating_systems-p1-c1,1.0000,1.0000
+q15,Hybrid,operating_systems-p1-c6,operating_systems-p1-c6 databases-p1-c0 operating_systems-p1-c5,1.0000,1.0000
+q15,Graph-enhanced hybrid,operating_systems-p1-c6,operating_systems-p1-c6 databases-p1-c0 operating_systems-p1-c5,1.0000,1.0000
+q16,Dense,python-p1-c5 python-p1-c6,python-p1-c6 python-p1-c5 operating_systems-p1-c1,1.0000,1.0000
+q16,BM25,python-p1-c5 python-p1-c6,operating_systems-p1-c6 python-p1-c5 operating_systems-p1-c1,0.5000,0.5000
+q16,Hybrid,python-p1-c5 python-p1-c6,python-p1-c5 operating_systems-p1-c1 python-p1-c6,1.0000,1.0000
+q16,Graph-enhanced hybrid,python-p1-c5 python-p1-c6,python-p1-c5 operating_systems-p1-c1 python-p1-c6,1.0000,1.0000
+q17,Dense,python-p1-c2,python-p1-c2 python-p1-c1 databases-p1-c2,1.0000,1.0000
+q17,BM25,python-p1-c2,python-p1-c2 databases-p1-c2 databases-p1-c6,1.0000,1.0000
+q17,Hybrid,python-p1-c2,python-p1-c2 databases-p1-c2 python-p1-c1,1.0000,1.0000
+q17,Graph-enhanced hybrid,python-p1-c2,python-p1-c2 databases-p1-c2 python-p1-c1,1.0000,1.0000
+q18,Dense,python-p1-c3,python-p1-c3 python-p1-c6 python-p1-c5,1.0000,1.0000
+q18,BM25,python-p1-c3,python-p1-c3 databases-p1-c2 databases-p1-c8,1.0000,1.0000
+q18,Hybrid,python-p1-c3,python-p1-c3 python-p1-c6 databases-p1-c2,1.0000,1.0000
+q18,Graph-enhanced hybrid,python-p1-c3,python-p1-c3 python-p1-c6 databases-p1-c2,1.0000,1.0000
+q19,Dense,python-p1-c4,python-p1-c4 python-p1-c6 python-p1-c5,1.0000,1.0000
+q19,BM25,python-p1-c4,python-p1-c4 networks-p1-c1 databases-p1-c8,1.0000,1.0000
+q19,Hybrid,python-p1-c4,python-p1-c4 python-p1-c6 networks-p1-c1,1.0000,1.0000
+q19,Graph-enhanced hybrid,python-p1-c4,python-p1-c4 python-p1-c6 networks-p1-c1,1.0000,1.0000
+q20,Dense,networks-p1-c5 networks-p1-c6,networks-p1-c5 networks-p1-c6 networks-p1-c4,1.0000,1.0000
+q20,BM25,networks-p1-c5 networks-p1-c6,operating_systems-p1-c1 networks-p1-c4 networks-p1-c6,0.5000,0.3333
+q20,Hybrid,networks-p1-c5 networks-p1-c6,networks-p1-c6 networks-p1-c4 networks-p1-c5,1.0000,1.0000
+q20,Graph-enhanced hybrid,networks-p1-c5 networks-p1-c6,networks-p1-c6 networks-p1-c4 networks-p1-c5,1.0000,1.0000
