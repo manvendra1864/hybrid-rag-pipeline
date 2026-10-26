@@ -14,7 +14,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 @dataclass(frozen=True)
 class Config:
     docs_dir: Path = PROJECT_ROOT / "data" / "documents"
-    storage_dir: Path = PROJECT_ROOT / "storage"
     chroma_dir: Path = PROJECT_ROOT / "storage" / "chroma"
     chunks_file: Path = PROJECT_ROOT / "storage" / "chunks.json"
     graph_file: Path = PROJECT_ROOT / "storage" / "graph.json"
@@ -41,15 +40,16 @@ class Config:
     graph_top_k: int = 3
     graph_weight: float = 0.5
 
-    # Gemini model used by scripts/ask.py. The API key is read from the
-    # environment (GEMINI_API_KEY or GOOGLE_API_KEY), never stored here.
-    llm_model: str = "gemini-3.8-flash"
+    # Groq model used for answers. The API key is read from the environment
+    # (GROQ_API_KEY), never stored here.
+    llm_model: str = "openai/gpt-oss-120b"
+    # Seconds allowed for each Groq request attempt.
+    llm_timeout_seconds: int = 60
 
 
 def load_config() -> Config:
     return Config(
         docs_dir=Path(os.environ.get("RAG_DOCS_DIR", Config.docs_dir)),
-        storage_dir=Path(os.environ.get("RAG_STORAGE_DIR", Config.storage_dir)),
         chroma_dir=Path(os.environ.get("RAG_CHROMA_DIR", Config.chroma_dir)),
         chunks_file=Path(os.environ.get("RAG_CHUNKS_FILE", Config.chunks_file)),
         graph_file=Path(os.environ.get("RAG_GRAPH_FILE", Config.graph_file)),
@@ -63,4 +63,5 @@ def load_config() -> Config:
         graph_top_k=int(os.environ.get("RAG_GRAPH_TOP_K", Config.graph_top_k)),
         graph_weight=float(os.environ.get("RAG_GRAPH_WEIGHT", Config.graph_weight)),
         llm_model=os.environ.get("RAG_LLM_MODEL", Config.llm_model),
+        llm_timeout_seconds=int(os.environ.get("RAG_LLM_TIMEOUT", Config.llm_timeout_seconds)),
     )

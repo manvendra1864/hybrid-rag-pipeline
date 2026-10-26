@@ -1,8 +1,8 @@
 """Ask a question and get an answer grounded in the retrieved documents.
 
 Retrieval is the graph-enhanced hybrid ranking; the top chunks are passed to
-Gemini as the only context it may answer from. Set GEMINI_API_KEY (or
-GOOGLE_API_KEY) in the environment or in a .env file first.
+Groq as the only context it may answer from. Set GROQ_API_KEY in the
+environment or in a .env file first.
 
 Usage:
     python scripts/ask.py "How are primary keys and foreign keys related?"
@@ -29,11 +29,15 @@ from src.rag.hybrid_retrieval import query_hybrid
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Answer a question from the documents using graph-enhanced hybrid retrieval and Gemini."
+        description="Answer a question from the documents using graph-enhanced hybrid retrieval and Groq."
     )
     parser.add_argument("query", help="The question to answer.")
     parser.add_argument("--k", type=int, default=None, help="Number of chunks to retrieve (default from config).")
     args = parser.parse_args(argv)
+
+    # Answers can contain characters that a Windows console code page cannot print.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
 
     load_dotenv(PROJECT_ROOT / ".env")
     config = load_config()

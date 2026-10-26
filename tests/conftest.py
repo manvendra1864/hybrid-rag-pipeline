@@ -16,7 +16,6 @@ def test_config(tmp_path):
     """Config pointing at the real demo corpus but scratch storage paths."""
     return Config(
         docs_dir=PROJECT_ROOT / "data" / "documents",
-        storage_dir=tmp_path,
         chroma_dir=tmp_path / "chroma",
         chunks_file=tmp_path / "chunks.json",
         graph_file=tmp_path / "graph.json",

@@ -1,4 +1,4 @@
-"""Generate an answer from retrieved chunks with Gemini, using only those chunks.
+"""Generate an answer from retrieved chunks with Groq, using only those chunks.
 
 The chunks are formatted into a context block that keeps each chunk's source
 filename and chunk id, and the model is told to answer only from that context
@@ -10,9 +10,11 @@ import os
 import re
 from dataclasses import dataclass
 
+import httpx
+from groq import APITimeoutError
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 
 from config import Config
 
@@ -28,7 +30,10 @@ Rules:
 - After each statement, cite the passage it came from as [source_file, chunk_id], copying both values exactly from that passage's header. Never cite a passage that is not in the context.
 - Keep the answer short and direct."""
 
-_API_KEY_VARIABLES = ("GEMINI_API_KEY", "GOOGLE_API_KEY")
+_API_KEY_VARIABLES = ("GROQ_API_KEY",)
+
+# Retries after the first attempt, so a failing request is tried twice in total.
+MAX_RETRIES = 1
 
 
 class MissingApiKeyError(RuntimeError):
@@ -53,19 +58,55 @@ def get_api_key() -> str:
         if value:
             return value
     raise MissingApiKeyError(
-        "No Gemini API key found. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your "
-        "environment or in a .env file. A key can be created at "
-        "https://aistudio.google.com/apikey"
+        "No Groq API key found. Set GROQ_API_KEY in your environment or in a "
+        ".env file. A key can be created at https://console.groq.com/keys"
     )
 
 
-def create_llm(config: Config) -> ChatGoogleGenerativeAI:
-    return ChatGoogleGenerativeAI(
+def create_llm(config: Config) -> ChatGroq:
+    return ChatGroq(
         model=config.llm_model,
-        google_api_key=get_api_key(),
+        api_key=get_api_key(),
         temperature=0,
-        max_retries=2,
+        timeout=config.llm_timeout_seconds,
+        max_retries=MAX_RETRIES,
     )
+
+
+def describe_request_error(error: BaseException) -> str:
+    """A short message for a failed Groq request, without the raw error text.
+
+    The raw text can be long and is not useful to the person asking, so only
+    the kind of failure is reported.
+    """
+    chain = []
+    current = error
+    while current is not None and current not in chain:
+        chain.append(current)
+        current = current.__cause__ or current.__context__
+
+    code = next((e.status_code for e in chain if isinstance(getattr(e, "status_code", None), int)), None)
+    timed_out = code in (504, 408) or any(
+        isinstance(e, (TimeoutError, httpx.TimeoutException, APITimeoutError)) for e in chain
+    )
+    if timed_out:
+        # Our own client timeout and a 504 from the service mean the same thing.
+        return "Groq took too long to answer. Please try again shortly."
+    if code == 503:
+        return "Groq is temporarily unavailable (503). Please try again in a few moments."
+    if code == 429:
+        if any(re.search(r"per ?day|\((?:RPD|TPD)\)", str(e), flags=re.IGNORECASE) for e in chain):
+            return (
+                "The daily Groq request limit for this API key is used up (429). "
+                "Try again later, or use a key with a higher limit."
+            )
+        return "Groq is receiving too many requests (429). Please wait a little and try again."
+    if code in (401, 403):
+        return "Groq rejected the API key. Check that the key is valid and allowed to use this model."
+    if code == 404:
+        return "Groq could not find the configured model. Check RAG_LLM_MODEL."
+    detail = f"HTTP {code}" if code else type(error).__name__
+    return f"The Groq request failed ({detail}). Please try again."
 
 
 def format_context(chunks: list[Document]) -> str:
@@ -124,9 +165,7 @@ def generate_answer(
     try:
         response = llm.invoke(build_messages(query, chunks))
     except Exception as error:
-        raise AnswerGenerationError(
-            f"The Gemini request failed ({type(error).__name__}): {error}"
-        ) from error
+        raise AnswerGenerationError(describe_request_error(error)) from error
 
     text = _response_text(response).strip()
     if not text:

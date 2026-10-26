@@ -4,7 +4,7 @@ langchain-community==0.4.2
 langchain-text-splitters==1.1.2
 langchain-huggingface==1.2.2
 langchain-chroma==1.1.0
-langchain-google-genai==4.4.2
+langchain-groq==1.1.3
 
 # Vector store backend for langchain-chroma
 chromadb==1.5.9
@@ -15,7 +15,7 @@ sentence-transformers==6.1.0
 # BM25 sparse retrieval
 rank-bm25==0.2.2
 
-# Loads GEMINI_API_KEY from a local .env file in scripts/ask.py
+# Loads GROQ_API_KEY from a local .env file in scripts/ask.py
 python-dotenv==1.2.3
 
 # Knowledge graph structure and traversal

@@ -1,8 +1,10 @@
 import dataclasses
 import importlib.util
-from pathlib import Path
+import sys
 from types import SimpleNamespace
 
+import groq
+import httpx
 import pytest
 from langchain_core.documents import Document
 
@@ -48,8 +50,7 @@ class FakeLLM:
 
 @pytest.fixture(autouse=True)
 def no_real_key(monkeypatch):
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
 
 
 def test_format_context_includes_source_filename_chunk_id_and_text():
@@ -151,8 +152,146 @@ def test_content_returned_as_blocks_is_joined(test_config):
 def test_api_failure_becomes_a_clear_error(test_config):
     llm = FakeLLM(error=ConnectionError("network down"))
 
-    with pytest.raises(AnswerGenerationError, match="ConnectionError.*network down"):
+    with pytest.raises(AnswerGenerationError, match="ConnectionError") as error:
         generate_answer("q", [PRIMARY], test_config, llm=llm)
+
+    assert "network down" not in str(error.value)
+
+
+SLOW = "Groq took too long to answer. Please try again shortly."
+
+
+REQUEST = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+
+
+def _status_error(code, message="long raw message " * 30):
+    """The error the Groq client raises for an HTTP error response."""
+    return groq.APIStatusError(message, response=httpx.Response(code, request=REQUEST), body=None)
+
+
+def _api_error(code, status, message="long raw message " * 30):
+    return _status_error(code, message)
+
+
+def _server_error(code, status):
+    return _status_error(code, "x " * 200)
+
+
+@pytest.mark.parametrize(
+    "error, expected",
+    [
+        (_server_error(503, "UNAVAILABLE"), "temporarily unavailable (503). Please try again in a few moments"),
+        (_api_error(429, "RESOURCE_EXHAUSTED"), "too many requests (429)"),
+        (_api_error(401, "UNAUTHENTICATED"), "rejected the API key"),
+        (_api_error(403, "PERMISSION_DENIED"), "rejected the API key"),
+        (_api_error(404, "NOT_FOUND"), "RAG_LLM_MODEL"),
+        (_server_error(500, "INTERNAL"), "failed (HTTP 500)"),
+        (_server_error(504, "DEADLINE_EXCEEDED"), SLOW),
+        (_api_error(504, "DEADLINE_EXCEEDED"), SLOW),
+        (httpx.ReadTimeout("read timed out"), SLOW),
+        (groq.APITimeoutError(request=REQUEST), SLOW),
+        (TimeoutError("slow"), SLOW),
+        (RuntimeError("something odd"), "failed (RuntimeError)"),
+    ],
+)
+def test_request_errors_become_short_messages(test_config, error, expected):
+    with pytest.raises(AnswerGenerationError) as raised:
+        generate_answer("q", [PRIMARY], test_config, llm=FakeLLM(error=error))
+
+    message = str(raised.value)
+    assert expected in message
+    assert len(message) < 120
+    assert "raw message" not in message and "x x x" not in message
+    assert raised.value.__cause__ is error
+
+
+def _wrapped(inner):
+    # the client libraries can re-raise an HTTP error inside their own error type
+    try:
+        try:
+            raise inner
+        except Exception as caught:
+            raise RuntimeError("wrapped by the client") from caught
+    except RuntimeError as wrapped:
+        return wrapped
+
+
+@pytest.mark.parametrize(
+    "inner, expected",
+    [
+        (_server_error(503, "UNAVAILABLE"), "temporarily unavailable"),
+        (_server_error(504, "DEADLINE_EXCEEDED"), SLOW),
+        (httpx.ReadTimeout("read timed out"), SLOW),
+    ],
+)
+def test_wrapped_errors_are_still_recognised(test_config, inner, expected):
+    with pytest.raises(AnswerGenerationError) as raised:
+        generate_answer("q", [PRIMARY], test_config, llm=FakeLLM(error=_wrapped(inner)))
+
+    assert expected in str(raised.value)
+
+
+def test_a_groq_timeout_is_recognised_without_a_status_code():
+    assert answer_module.describe_request_error(groq.APITimeoutError(request=REQUEST)) == SLOW
+
+
+DAILY_QUOTA_TEXT = (
+    "Rate limit reached for model `openai/gpt-oss-120b` in organization `org_x` service tier "
+    "`on_demand` on tokens per day (TPD): Limit 200000, Used 199900, Requested 500. "
+    "Please try again in 10m. Need more tokens? Upgrade to Dev Tier today."
+)
+DAILY_QUOTA_MESSAGE = (
+    "The daily Groq request limit for this API key is used up (429). "
+    "Try again later, or use a key with a higher limit."
+)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [DAILY_QUOTA_TEXT, "Rate limit reached ... on requests per day (RPD): Limit 1000, Used 1000."],
+)
+def test_a_daily_quota_error_says_so_instead_of_asking_for_a_short_wait(test_config, text):
+    error = _status_error(429, text)
+
+    with pytest.raises(AnswerGenerationError) as raised:
+        generate_answer("q", [PRIMARY], test_config, llm=FakeLLM(error=error))
+
+    assert str(raised.value) == DAILY_QUOTA_MESSAGE
+
+
+def test_a_wrapped_daily_quota_error_is_still_recognised(test_config):
+    error = _wrapped(_status_error(429, DAILY_QUOTA_TEXT))
+
+    with pytest.raises(AnswerGenerationError) as raised:
+        generate_answer("q", [PRIMARY], test_config, llm=FakeLLM(error=error))
+
+    assert str(raised.value) == DAILY_QUOTA_MESSAGE
+
+
+def test_a_per_minute_rate_limit_still_asks_for_a_short_wait(test_config):
+    text = "Rate limit reached for model `openai/gpt-oss-120b` on tokens per minute (TPM): Limit 8000. Please try again in 5s."
+
+    with pytest.raises(AnswerGenerationError, match="too many requests .429.. Please wait a little"):
+        generate_answer("q", [PRIMARY], test_config, llm=FakeLLM(error=_status_error(429, text)))
+
+
+def test_a_504_message_does_not_show_raw_details(test_config):
+    error = _server_error(504, "DEADLINE_EXCEEDED")
+
+    with pytest.raises(AnswerGenerationError) as raised:
+        generate_answer("q", [PRIMARY], test_config, llm=FakeLLM(error=error))
+
+    assert str(raised.value) == SLOW
+
+
+def test_the_api_key_is_not_in_the_short_message(test_config, monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "secret-key-123")
+    error = _status_error(503, "service unavailable for key secret-key-123")
+
+    with pytest.raises(AnswerGenerationError) as raised:
+        generate_answer("q", [PRIMARY], test_config, llm=FakeLLM(error=error))
+
+    assert "secret-key-123" not in str(raised.value)
 
 
 def test_empty_model_reply_is_an_error(test_config):
@@ -161,26 +300,30 @@ def test_empty_model_reply_is_an_error(test_config):
 
 
 def test_missing_api_key_gives_a_clear_error():
-    with pytest.raises(MissingApiKeyError, match="GEMINI_API_KEY") as error:
+    with pytest.raises(MissingApiKeyError, match="GROQ_API_KEY") as error:
         get_api_key()
 
-    assert "GOOGLE_API_KEY" in str(error.value)
     assert ".env" in str(error.value)
 
 
 def test_blank_api_key_counts_as_missing(monkeypatch):
-    monkeypatch.setenv("GEMINI_API_KEY", "   ")
+    monkeypatch.setenv("GROQ_API_KEY", "   ")
 
     with pytest.raises(MissingApiKeyError):
         get_api_key()
 
 
-def test_gemini_key_is_preferred_and_google_key_is_the_fallback(monkeypatch):
-    monkeypatch.setenv("GOOGLE_API_KEY", "google-key")
-    assert get_api_key() == "google-key"
+def test_the_groq_key_is_read_from_the_environment(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "  groq-key  ")
 
+    assert get_api_key() == "groq-key"
+
+
+def test_an_old_gemini_key_is_not_used_for_groq(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "gemini-key")
-    assert get_api_key() == "gemini-key"
+
+    with pytest.raises(MissingApiKeyError):
+        get_api_key()
 
 
 def test_generate_answer_without_a_key_fails_before_calling_anything(test_config):
@@ -195,18 +338,58 @@ def test_create_llm_uses_the_configured_model_and_key(test_config, monkeypatch):
         captured.update(kwargs)
         return "client"
 
-    monkeypatch.setattr(answer_module, "ChatGoogleGenerativeAI", fake_chat)
-    monkeypatch.setenv("GEMINI_API_KEY", "secret-key")
+    monkeypatch.setattr(answer_module, "ChatGroq", fake_chat)
+    monkeypatch.setenv("GROQ_API_KEY", "secret-key")
     config = dataclasses.replace(test_config, llm_model="some-other-model")
 
     assert create_llm(config) == "client"
     assert captured["model"] == "some-other-model"
-    assert captured["google_api_key"] == "secret-key"
+    assert captured["api_key"] == "secret-key"
     assert captured["temperature"] == 0
 
 
+def test_create_llm_sets_a_request_timeout_and_keeps_the_retries(test_config, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(answer_module, "ChatGroq", lambda **kwargs: captured.update(kwargs))
+    monkeypatch.setenv("GROQ_API_KEY", "secret-key")
+
+    create_llm(test_config)
+
+    assert captured["timeout"] == 60
+    assert captured["max_retries"] == answer_module.MAX_RETRIES == 1  # one retry: two attempts in all
+
+
+def test_the_real_groq_client_is_built_from_the_config_without_a_network_call(test_config, monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "secret-key-xyz")
+
+    llm = create_llm(test_config)
+
+    assert llm.model_name == "openai/gpt-oss-120b"
+    assert llm.request_timeout == 60
+    assert llm.max_retries == 1
+    assert llm.temperature == pytest.approx(0, abs=1e-6)  # the client turns 0 into a tiny value
+    assert "secret-key-xyz" not in repr(llm) and "secret-key-xyz" not in str(llm.groq_api_key)
+
+
+def test_the_timeout_comes_from_the_config(test_config, monkeypatch):
+    captured = {}
+    monkeypatch.setattr(answer_module, "ChatGroq", lambda **kwargs: captured.update(kwargs))
+    monkeypatch.setenv("GROQ_API_KEY", "secret-key")
+
+    create_llm(dataclasses.replace(test_config, llm_timeout_seconds=90))
+
+    assert captured["timeout"] == 90
+
+
+def test_llm_timeout_can_be_set_with_rag_llm_timeout(monkeypatch):
+    assert load_config().llm_timeout_seconds == 60
+
+    monkeypatch.setenv("RAG_LLM_TIMEOUT", "120")
+    assert load_config().llm_timeout_seconds == 120
+
+
 def test_llm_model_comes_from_rag_llm_model(monkeypatch):
-    assert load_config().llm_model == "gemini-3.8-flash"
+    assert load_config().llm_model == "openai/gpt-oss-120b"
 
     monkeypatch.setenv("RAG_LLM_MODEL", "my-model")
     assert load_config().llm_model == "my-model"
@@ -226,7 +409,7 @@ def ask_script(monkeypatch):
 
 
 def test_ask_prints_answer_and_sources(ask_script, monkeypatch, capsys):
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
     llm = FakeLLM("Foreign keys reference primary keys [databases.md, databases-p1-c3].")
     monkeypatch.setattr(ask_script, "create_llm", lambda config: llm)
     seen = {}
@@ -282,7 +465,7 @@ def test_ask_without_an_api_key_exits_with_a_clear_message(ask_script, monkeypat
 
     captured = capsys.readouterr()
     assert code == 1
-    assert "GEMINI_API_KEY" in captured.err
+    assert "GROQ_API_KEY" in captured.err
     assert captured.out == ""
 
 
@@ -294,7 +477,55 @@ def test_ask_reports_api_errors_without_a_traceback(ask_script, monkeypatch, cap
 
     captured = capsys.readouterr()
     assert code == 1
-    assert "Error: The Gemini request failed (TimeoutError): slow" in captured.err
+    assert captured.err.strip() == f"Error: {SLOW}"
+
+
+def test_ask_prints_an_answer_even_if_the_console_cannot_encode_it(ask_script, monkeypatch):
+    import io
+
+    raw = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(raw, encoding="cp1252"))
+    reply = "Keys link tables‑and rows [databases.md, databases-p1-c3]."
+    monkeypatch.setattr(ask_script, "create_llm", lambda config: FakeLLM(reply))
+    monkeypatch.setattr(ask_script, "query_hybrid", lambda *a, **k: [(PRIMARY, 0.03), (FOREIGN, 0.02)])
+
+    code = ask_script.main(["q"])
+    sys.stdout.flush()
+
+    assert code == 0
+    assert "Keys link tables" in raw.getvalue().decode("cp1252")
+
+
+def test_ask_reports_a_daily_quota_error_with_the_same_message_as_the_app(ask_script, monkeypatch, capsys):
+    error = _status_error(429, DAILY_QUOTA_TEXT)
+    monkeypatch.setattr(ask_script, "create_llm", lambda config: FakeLLM(error=error))
+    monkeypatch.setattr(ask_script, "query_hybrid", lambda *a, **k: [(PRIMARY, 0.03)])
+
+    code = ask_script.main(["q"])
+
+    assert code == 1
+    assert capsys.readouterr().err.strip() == f"Error: {DAILY_QUOTA_MESSAGE}"
+
+
+def test_ask_reports_a_504_with_the_same_short_message_as_the_app(ask_script, monkeypatch, capsys):
+    monkeypatch.setattr(ask_script, "create_llm", lambda config: FakeLLM(error=_server_error(504, "DEADLINE_EXCEEDED")))
+    monkeypatch.setattr(ask_script, "query_hybrid", lambda *a, **k: [(PRIMARY, 0.03)])
+
+    code = ask_script.main(["q"])
+
+    assert code == 1
+    assert capsys.readouterr().err.strip() == f"Error: {SLOW}"
+
+
+def test_ask_reports_a_503_with_the_same_short_message_as_the_app(ask_script, monkeypatch, capsys):
+    monkeypatch.setattr(ask_script, "create_llm", lambda config: FakeLLM(error=_server_error(503, "UNAVAILABLE")))
+    monkeypatch.setattr(ask_script, "query_hybrid", lambda *a, **k: [(PRIMARY, 0.03)])
+
+    code = ask_script.main(["q"])
+
+    captured = capsys.readouterr()
+    assert code == 1
+    assert captured.err.strip() == "Error: Groq is temporarily unavailable (503). Please try again in a few moments."
 
 
 def test_ask_reports_a_missing_index_clearly(ask_script, monkeypatch, capsys):
