@@ -1,0 +1,20 @@
+[theme]
+base = "dark"
+primaryColor = "#d4a15a"
+backgroundColor = "#0e1014"
+secondaryBackgroundColor = "#151921"
+textColor = "#e4e5e8"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+# Only this computer can open the app; it can spend the Groq API key.
+address = "localhost"
+# The file watcher imports every transformers submodule and floods the log with
+# torchvision errors on the first question. The app does not need live reload.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false

@@ -21,5 +21,8 @@ python-dotenv==1.2.3
 # Knowledge graph structure and traversal
 networkx==3.7
 
+# Chat interface (app.py)
+streamlit==1.66.0
+
 # Testing
 pytest==9.1.1
