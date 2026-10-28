@@ -9,8 +9,8 @@ def test_full_pipeline_runs_and_returns_results(test_config, ingested_chunks):
 
     build_dense_index(ingested_chunks, test_config)
 
-    dense_results = query_dense("What are the health benefits?", test_config)
-    bm25_results = query_bm25("What is policy IT-131?", test_config)
+    dense_results = query_dense("How does a computer keep running many programs when its memory fills up?", test_config)
+    bm25_results = query_bm25("What does DNS stand for?", test_config)
 
     assert len(dense_results) > 0
     assert len(bm25_results) > 0
