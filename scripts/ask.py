@@ -29,7 +29,7 @@ from src.rag.hybrid_retrieval import query_hybrid
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Answer a question from the documents using graph-enhanced hybrid retrieval and Groq."
+        description="NexusRAG: answer a question from the documents using graph-enhanced hybrid retrieval and Groq."
     )
     parser.add_argument("query", help="The question to answer.")
     parser.add_argument("--k", type=int, default=None, help="Number of chunks to retrieve (default from config).")

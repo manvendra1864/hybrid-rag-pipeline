@@ -30,7 +30,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "evaluation"
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Evaluate the four retrieval methods on the labelled questions.")
+    parser = argparse.ArgumentParser(description="NexusRAG: evaluate the four retrieval methods on the labelled questions.")
     parser.add_argument("--questions", type=Path, default=DEFAULT_QUESTIONS, help="Question file (JSON).")
     parser.add_argument("--k", type=int, default=DEFAULT_K, help="Results kept per method (default 3).")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR, help="Where results.md and results.csv go.")

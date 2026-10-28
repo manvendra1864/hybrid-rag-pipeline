@@ -34,7 +34,7 @@ def _print_summary(graph) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Knowledge graph lookup over the demo corpus.")
+    parser = argparse.ArgumentParser(description="NexusRAG: knowledge graph lookup over the demo corpus.")
     parser.add_argument("query", nargs="?", help="Question or search text. Omit for a graph summary.")
     args = parser.parse_args()
 

@@ -16,7 +16,7 @@ from src.rag.dense_retrieval import query_dense
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Dense retrieval over the demo corpus.")
+    parser = argparse.ArgumentParser(description="NexusRAG: dense retrieval over the demo corpus.")
     parser.add_argument("query", help="Question or search text.")
     parser.add_argument("--k", type=int, default=None, help="Number of results (default from config).")
     args = parser.parse_args()

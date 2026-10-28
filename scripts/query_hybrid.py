@@ -30,7 +30,7 @@ def _print_results(results, notes=None) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Compare dense, BM25, hybrid, and graph-enhanced hybrid retrieval for a query."
+        description="NexusRAG: compare dense, BM25, hybrid, and graph-enhanced hybrid retrieval for a query."
     )
     parser.add_argument("query", help="Question or search text.")
     parser.add_argument("--k", type=int, default=None, help="Number of hybrid results (default from config).")

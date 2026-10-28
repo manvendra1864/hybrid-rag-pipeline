@@ -1,4 +1,4 @@
-"""Central configuration for the RAG pipeline.
+"""Central configuration for NexusRAG.
 
 Values can be overridden with environment variables, but sensible
 defaults are provided so the project runs out of the box.
