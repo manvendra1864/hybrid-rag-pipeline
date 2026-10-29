@@ -5,10 +5,39 @@ Run from the project root:
 """
 
 import html
+import sys
+import time
 from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
+
+
+def drop_stale_project_modules() -> None:
+    """Make a redeploy take effect without restarting the server.
+
+    Streamlit runs app.py from disk on every run but keeps imported modules in memory, so
+    after new code is deployed the new app.py can meet the old modules and fail with
+    "cannot import name ...". The project's modules are dropped, and so imported again from
+    disk, if no earlier run has loaded them yet or if a source file changed since then.
+    """
+    loaded_at = getattr(sys, "_nexusrag_loaded_at", None)
+    project = [name for name in sys.modules if name in ("config", "src") or name.startswith("src.")]
+
+    def changed(name: str) -> bool:
+        source = getattr(sys.modules[name], "__file__", None)
+        try:
+            return bool(source) and Path(source).stat().st_mtime > loaded_at
+        except OSError:
+            return True
+
+    if loaded_at is None or any(changed(name) for name in project):
+        for name in project:
+            sys.modules.pop(name, None)
+    sys._nexusrag_loaded_at = time.time()
+
+
+drop_stale_project_modules()
 
 from config import PROJECT_ROOT, load_config
 from src.rag.dense_retrieval import get_embeddings

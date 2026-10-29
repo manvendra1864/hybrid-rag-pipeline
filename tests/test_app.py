@@ -1,5 +1,9 @@
 """Run app.py headlessly with Streamlit's test runner. No browser, model, network or API key."""
 
+import sys
+import time
+import types
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -74,6 +78,8 @@ def _visible_text(at):
 @pytest.fixture
 def empty_app(test_config, monkeypatch):
     """The app with every external piece replaced and no search index on disk yet."""
+    # these tests patch the already imported modules, so app.py must not re-import them
+    monkeypatch.setattr(sys, "_nexusrag_loaded_at", time.time(), raising=False)
     for name, path in (
         ("RAG_CHUNKS_FILE", test_config.chunks_file),
         ("RAG_GRAPH_FILE", test_config.graph_file),
@@ -128,6 +134,66 @@ def test_first_page_shows_graph_stats_settings_and_examples(app):
     assert app.sidebar.slider[0].value == 3
     assert len([b for b in app.button if b.label.startswith(("How are", "What does", "How can"))]) == 3
     assert "API key <b>missing</b>" in _visible_text(app)
+
+
+def _project_module_names():
+    return [name for name in sys.modules if name in ("config", "src") or name.startswith("src.")]
+
+
+@pytest.fixture
+def stale_server(monkeypatch):
+    """Put the project's modules back as they were after a test that makes app.py re-import them."""
+    saved = {name: sys.modules[name] for name in _project_module_names()}
+    yield
+    for name in _project_module_names():
+        del sys.modules[name]
+    sys.modules.update(saved)
+
+
+@pytest.fixture
+def no_model(monkeypatch):
+    """The re-imported modules are new objects, so the embedding model is replaced at its source."""
+    monkeypatch.setattr("langchain_huggingface.HuggingFaceEmbeddings", lambda **kwargs: object())
+
+
+def test_a_redeploy_with_old_modules_still_in_memory_does_not_crash(app, stale_server, no_model, monkeypatch):
+    # What happened after a redeploy: the server still held the previous src/rag/ui_helpers.py,
+    # which has no ensure_index, and the new app.py failed on its import at line 16.
+    old_module = types.ModuleType("src.rag.ui_helpers")
+    added_by_the_new_version = ("ensure_index", "index_problems", "build_index")
+    vars(old_module).update({k: v for k, v in vars(ui).items() if k not in added_by_the_new_version})
+    monkeypatch.setitem(sys.modules, "src.rag.ui_helpers", old_module)
+    monkeypatch.delattr(sys, "_nexusrag_loaded_at", raising=False)  # no earlier run of this app.py
+
+    app.run()
+
+    assert not app.exception
+    assert [t.value for t in app.title] == ["NexusRAG"]
+    assert len(app.chat_input) == 1
+    assert hasattr(sys.modules["src.rag.ui_helpers"], "ensure_index")
+
+
+def test_a_source_file_changed_after_the_last_run_is_loaded_again(app, stale_server, no_model, monkeypatch):
+    before = sys.modules["src.rag.ui_helpers"]
+    # the last run was just before the source file's own modification time, so the file is newer
+    long_ago = Path(ui.__file__).stat().st_mtime - 10
+    monkeypatch.setattr(sys, "_nexusrag_loaded_at", long_ago)
+
+    app.run()
+
+    assert not app.exception
+    assert sys.modules["src.rag.ui_helpers"] is not before
+    assert sys._nexusrag_loaded_at > long_ago
+
+
+def test_unchanged_modules_are_kept_between_runs(app):
+    before = {name: sys.modules[name] for name in _project_module_names()}
+
+    app.run()
+    app.run()
+
+    assert not app.exception
+    assert all(sys.modules[name] is module for name, module in before.items())
 
 
 def test_the_page_shows_the_project_name_and_description(app):
