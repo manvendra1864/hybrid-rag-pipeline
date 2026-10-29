@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import load_config
+from config import Config, load_config
 from src.rag.chunker import chunk_documents
 from src.rag.chunk_store import save_chunks
 from src.rag.dense_retrieval import build_dense_index
@@ -17,8 +17,8 @@ from src.rag.knowledge_graph import build_graph, save_graph
 from src.rag.loader import load_documents
 
 
-def main() -> None:
-    config = load_config()
+def main(config: Config | None = None) -> None:
+    config = config or load_config()
 
     print(f"Loading documents from {config.docs_dir} ...")
     documents = load_documents(config.docs_dir)

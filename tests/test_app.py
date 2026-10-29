@@ -72,12 +72,8 @@ def _visible_text(at):
 
 
 @pytest.fixture
-def app(test_config, monkeypatch):
-    chunks = [PRIMARY, FOREIGN]
-    save_chunks(chunks, test_config.chunks_file)
-    save_graph(build_graph(chunks), test_config.graph_file)
-    test_config.chroma_dir.mkdir()
-
+def empty_app(test_config, monkeypatch):
+    """The app with every external piece replaced and no search index on disk yet."""
     for name, path in (
         ("RAG_CHUNKS_FILE", test_config.chunks_file),
         ("RAG_GRAPH_FILE", test_config.graph_file),
@@ -104,6 +100,16 @@ def app(test_config, monkeypatch):
     at = AppTest.from_file(str(PROJECT_ROOT / "app.py"), default_timeout=30)
     yield at
     st.cache_resource.clear()
+
+
+@pytest.fixture
+def app(empty_app, test_config, dense_index_builder):
+    """The same app with a small, valid search index already on disk."""
+    chunks = [PRIMARY, FOREIGN]
+    save_chunks(chunks, test_config.chunks_file)
+    save_graph(build_graph(chunks), test_config.graph_file)
+    dense_index_builder(chunks, test_config.chroma_dir)
+    return empty_app
 
 
 def _ask(at, text):
@@ -284,11 +290,93 @@ def test_api_key_value_is_never_rendered_even_on_success(app, monkeypatch):
     assert "API key <b>found</b>" in _visible_text(app)
 
 
-def test_missing_index_shows_setup_instructions_and_stops(app, test_config):
-    test_config.graph_file.unlink()
+@pytest.fixture
+def builder(test_config, monkeypatch, dense_index_builder):
+    """Stand in for the real ingestion: fast, records its calls, and can be made to fail."""
+    state = {"calls": 0, "errors": []}
 
+    def fake_build(config):
+        state["calls"] += 1
+        if state["errors"]:
+            raise state["errors"].pop(0)
+        chunks = [PRIMARY, FOREIGN]
+        save_chunks(chunks, config.chunks_file)
+        save_graph(build_graph(chunks), config.graph_file)
+        dense_index_builder(chunks, config.chroma_dir)
+
+    monkeypatch.setattr(ui, "build_index", fake_build)
+    return state
+
+
+def test_a_ready_index_is_not_rebuilt(app, builder):
     app.run()
 
     assert not app.exception
-    assert any("ingest.py" in e.value for e in app.error)
-    assert len(app.chat_input) == 0
+    assert builder["calls"] == 0
+    assert len(app.chat_input) == 1
+
+
+def test_missing_storage_is_built_automatically_before_the_chat_is_enabled(empty_app, builder):
+    empty_app.run()
+
+    assert not empty_app.exception
+    assert builder["calls"] == 1
+    assert not empty_app.error
+    assert len(empty_app.chat_input) == 1
+    assert {m.label: m.value for m in empty_app.sidebar.metric}["Chunks"] == "2"
+
+
+def test_the_index_is_built_once_not_on_every_rerun(empty_app, builder, monkeypatch):
+    monkeypatch.setattr(ui, "create_llm", lambda config: FakeLLM("ok [databases.md, databases-p1-c1]"))
+    empty_app.run()
+
+    empty_app.run()
+    _ask(empty_app, "What is a foreign key?")
+
+    assert builder["calls"] == 1
+    assert len(empty_app.chat_message) == 2
+
+
+def test_a_failed_build_shows_a_clear_error_and_keeps_retrieval_off(empty_app, builder):
+    builder["errors"].append(RuntimeError("no space left on device"))
+
+    empty_app.run()
+
+    assert not empty_app.exception
+    assert [e.value for e in empty_app.error] == ["Could not build the search index (RuntimeError): no space left on device"]
+    assert "Run `python scripts/ingest.py`" not in _visible_text(empty_app)  # not the old misleading message
+    assert len(empty_app.chat_input) == 0
+    assert "Try again" in [b.label for b in empty_app.button]
+
+
+def test_a_failed_build_is_not_retried_on_every_rerun(empty_app, builder):
+    builder["errors"].append(RuntimeError("boom"))
+    empty_app.run()
+
+    empty_app.sidebar.slider[0].set_value(2).run()
+    empty_app.run()
+
+    assert builder["calls"] == 1
+    assert len(empty_app.error) == 1
+
+
+def test_try_again_builds_once_more_and_then_enables_the_chat(empty_app, builder):
+    builder["errors"].append(RuntimeError("network down"))
+    empty_app.run()
+
+    next(b for b in empty_app.button if b.label == "Try again").click().run()
+
+    assert not empty_app.exception
+    assert builder["calls"] == 2
+    assert not empty_app.error
+    assert len(empty_app.chat_input) == 1
+
+
+def test_a_build_that_leaves_an_unusable_index_is_reported(empty_app, monkeypatch):
+    monkeypatch.setattr(ui, "build_index", lambda config: None)  # "succeeds" but writes nothing
+
+    empty_app.run()
+
+    assert not empty_app.exception
+    assert any("built but is not usable" in e.value for e in empty_app.error)
+    assert len(empty_app.chat_input) == 0

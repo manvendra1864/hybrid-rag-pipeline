@@ -29,3 +29,20 @@ def ingested_chunks(test_config):
     chunks = chunk_documents(documents, test_config.chunk_size, test_config.chunk_overlap)
     save_chunks(chunks, test_config.chunks_file)
     return chunks
+
+
+@pytest.fixture
+def dense_index_builder():
+    """Build a small but real Chroma index with fake embeddings, so no model is loaded."""
+    from langchain_chroma import Chroma
+    from langchain_core.embeddings import DeterministicFakeEmbedding
+
+    def build(chunks, chroma_dir):
+        Chroma.from_documents(
+            documents=chunks,
+            embedding=DeterministicFakeEmbedding(size=8),
+            persist_directory=str(chroma_dir),
+            ids=[chunk.metadata["chunk_id"] for chunk in chunks],
+        )
+
+    return build

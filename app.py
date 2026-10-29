@@ -20,6 +20,7 @@ from src.rag.ui_helpers import (
     EvaluationResultsError,
     api_key_available,
     citation_chips_html,
+    ensure_index,
     graph_stats,
     load_evaluation_summary,
     missing_files,
@@ -70,6 +71,13 @@ def warm_up(model_name: str, _config):
 def read_graph(path: str, modified: float):
     # `modified` is part of the cache key, so re-running ingestion refreshes the graph.
     return load_graph(Path(path))
+
+
+@st.cache_resource(show_spinner="Building the search index. This only happens on the first start and can take a few minutes...")
+def prepare_index(_config):
+    # Runs once per server process; other sessions wait for it. The result, including a
+    # failure message, is cached so reruns do not start another build. "Try again" clears it.
+    return ensure_index(_config)
 
 
 def chunk_html(record: dict) -> str:
@@ -176,12 +184,20 @@ def ask(question: str, k: int) -> None:
     st.session_state.turns.append(turn)
 
 
+# ---- header and search index -----------------------------------------------
+st.title("NexusRAG")
+st.markdown(
+    '<div class="app-sub">A hybrid RAG system combining dense retrieval, BM25, and Knowledge Graph-enhanced retrieval to generate context-aware answers from documents.</div>',
+    unsafe_allow_html=True,
+)
+index_error = prepare_index(config)
+
 # ---- sidebar ---------------------------------------------------------------
 missing = missing_files(config)
 
 with st.sidebar:
     st.markdown("### Knowledge graph")
-    if "knowledge graph" in missing:
+    if index_error or "knowledge graph" in missing:
         st.caption("Not built yet.")
     else:
         stats = graph_stats(read_graph(str(config.graph_file), config.graph_file.stat().st_mtime))
@@ -201,18 +217,13 @@ with st.sidebar:
         st.rerun()
 
 # ---- main ------------------------------------------------------------------
-st.title("NexusRAG")
-st.markdown(
-    '<div class="app-sub">A hybrid RAG system combining dense retrieval, BM25, and Knowledge Graph-enhanced retrieval to generate context-aware answers from documents.</div>',
-    unsafe_allow_html=True,
-)
-
 render_evaluation()
 
-if missing:
-    st.error(
-        f"The {', '.join(missing)} not found. Run `python scripts/ingest.py` once, then reload this page."
-    )
+if index_error:
+    st.error(index_error)
+    if st.button("Try again"):
+        prepare_index.clear()
+        st.rerun()
     st.stop()
 
 warm_up(config.embedding_model, config)

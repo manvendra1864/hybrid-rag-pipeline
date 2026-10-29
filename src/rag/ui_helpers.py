@@ -5,8 +5,11 @@ reimplements them. It returns a plain dict that the app only has to draw.
 """
 
 import html
+import importlib.util
+import logging
 import os
 import re
+import sqlite3
 from collections import Counter
 from pathlib import Path
 
@@ -22,6 +25,7 @@ from src.rag.answer_generation import (
     get_api_key,
 )
 from src.rag.bm25_retrieval import query_bm25
+from src.rag.chunk_store import load_chunks
 from src.rag.dense_retrieval import query_dense
 from src.rag.hybrid_retrieval import query_hybrid
 from src.rag.knowledge_graph import find_concepts, load_graph
@@ -34,6 +38,8 @@ SCORE_NOTES = {
     "Hybrid": "Score is the RRF score from dense and BM25.",
     "Graph-enhanced hybrid": "Score is the RRF score with the knowledge graph added as a third list.",
 }
+
+logger = logging.getLogger(__name__)
 
 _KEY_VARIABLES = ("GROQ_API_KEY",)
 
@@ -58,6 +64,83 @@ def missing_files(config: Config) -> list[str]:
         "knowledge graph": config.graph_file,
     }
     return [name for name, path in needed.items() if not path.exists()]
+
+
+def _dense_index_rows(chroma_dir: Path) -> int | None:
+    """Number of vectors stored in the Chroma index, or None if it cannot be read.
+
+    The SQLite file is opened read-only and closed straight away, so nothing is
+    left holding the index open when ingestion has to replace it.
+    """
+    database = chroma_dir / "chroma.sqlite3"
+    if not database.exists():
+        return None
+    try:
+        connection = sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)
+        try:
+            return connection.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0]
+        finally:
+            connection.close()
+    except sqlite3.Error:
+        return None
+
+
+def index_problems(config: Config) -> list[str]:
+    """Which generated index parts are missing or unusable (empty list: ready).
+
+    The chunk store and graph must load, and the dense index must hold exactly
+    one vector per chunk, which also catches a build that was cut short.
+    """
+    try:
+        chunk_count = len(load_chunks(config.chunks_file))
+    except Exception:
+        chunk_count = 0
+
+    problems = []
+    if chunk_count == 0:
+        problems.append("chunk store")
+    if chunk_count == 0 or _dense_index_rows(config.chroma_dir) != chunk_count:
+        problems.append("dense index")
+    try:
+        load_graph(config.graph_file)
+    except Exception:
+        problems.append("knowledge graph")
+    return problems
+
+
+def build_index(config: Config) -> None:
+    """Build the chunk store, knowledge graph and dense index with scripts/ingest.py.
+
+    The script is loaded from its file, so the app runs the same ingestion code
+    as `python scripts/ingest.py` and nothing is copied here.
+    """
+    path = PROJECT_ROOT / "scripts" / "ingest.py"
+    spec = importlib.util.spec_from_file_location("nexusrag_ingest_script", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.main(config)
+
+
+def ensure_index(config: Config) -> str | None:
+    """Make sure the index exists, building it if needed. None means it is ready.
+
+    On failure it returns a short message for the page; the full traceback goes
+    to the server log.
+    """
+    if not index_problems(config):
+        return None
+
+    try:
+        build_index(config)
+    except Exception as error:
+        logger.exception("Building the search index failed")
+        detail = redact(str(error), _env_secrets()).strip().splitlines()[0:1]
+        return f"Could not build the search index ({type(error).__name__}): {detail[0][:200] if detail else 'no details'}"
+
+    remaining = index_problems(config)
+    if remaining:
+        return f"The search index was built but is not usable yet: {', '.join(remaining)}."
+    return None
 
 
 def api_key_available() -> bool:

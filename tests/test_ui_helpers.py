@@ -1,3 +1,4 @@
+import importlib.util
 from types import SimpleNamespace
 
 import groq
@@ -6,8 +7,13 @@ import pytest
 from langchain_core.documents import Document
 
 import src.rag.ui_helpers as ui
+from config import PROJECT_ROOT
 from src.rag.answer_generation import INSUFFICIENT_MESSAGE
+from src.rag.chunk_store import load_chunks, save_chunks
+from src.rag.chunker import chunk_documents
+from src.rag.dense_retrieval import query_dense as real_query_dense
 from src.rag.knowledge_graph import build_graph, save_graph
+from src.rag.loader import load_documents
 
 
 def _chunk(chunk_id, text, source="databases.md"):
@@ -201,6 +207,151 @@ def test_a_results_file_that_is_not_text_gives_a_clear_error(tmp_path):
 
     with pytest.raises(ui.EvaluationResultsError, match="could not be read"):
         ui.load_evaluation_summary(path)
+
+
+# ---- search index checks and automatic build --------------------------------
+
+
+def _write_index(config, chunks, dense_index_builder, dense_chunks=None):
+    save_chunks(chunks, config.chunks_file)
+    save_graph(build_graph(chunks), config.graph_file)
+    dense_index_builder(chunks if dense_chunks is None else dense_chunks, config.chroma_dir)
+
+
+def test_a_complete_index_has_no_problems(test_config, dense_index_builder):
+    _write_index(test_config, [PRIMARY, FOREIGN, OTHER], dense_index_builder)
+
+    assert ui.index_problems(test_config) == []
+
+
+def test_everything_missing_is_reported(test_config):
+    assert ui.index_problems(test_config) == ["chunk store", "dense index", "knowledge graph"]
+
+
+@pytest.mark.parametrize("content", ["not json at all", "[]"])
+def test_an_unreadable_or_empty_chunk_store_is_a_problem(test_config, dense_index_builder, content):
+    _write_index(test_config, [PRIMARY, FOREIGN], dense_index_builder)
+    test_config.chunks_file.write_text(content, encoding="utf-8")
+
+    assert ui.index_problems(test_config) == ["chunk store", "dense index"]
+
+
+def test_a_corrupt_graph_file_is_a_problem(test_config, dense_index_builder):
+    _write_index(test_config, [PRIMARY, FOREIGN], dense_index_builder)
+    test_config.graph_file.write_text("{broken", encoding="utf-8")
+
+    assert ui.index_problems(test_config) == ["knowledge graph"]
+
+
+def test_a_dense_folder_without_an_index_is_a_problem(test_config):
+    save_chunks([PRIMARY, FOREIGN], test_config.chunks_file)
+    save_graph(build_graph([PRIMARY, FOREIGN]), test_config.graph_file)
+    test_config.chroma_dir.mkdir()
+
+    assert ui.index_problems(test_config) == ["dense index"]
+
+
+def test_a_dense_index_cut_short_is_a_problem(test_config, dense_index_builder):
+    _write_index(test_config, [PRIMARY, FOREIGN], dense_index_builder, dense_chunks=[PRIMARY])
+
+    assert ui.index_problems(test_config) == ["dense index"]
+
+
+def test_an_unreadable_dense_database_is_a_problem(test_config):
+    save_chunks([PRIMARY, FOREIGN], test_config.chunks_file)
+    save_graph(build_graph([PRIMARY, FOREIGN]), test_config.graph_file)
+    test_config.chroma_dir.mkdir()
+    (test_config.chroma_dir / "chroma.sqlite3").write_bytes(b"this is not a database" * 50)
+
+    assert ui.index_problems(test_config) == ["dense index"]
+
+
+def test_ensure_index_does_nothing_when_the_index_is_ready(test_config, dense_index_builder, monkeypatch):
+    _write_index(test_config, [PRIMARY, FOREIGN], dense_index_builder)
+    calls = []
+    monkeypatch.setattr(ui, "build_index", lambda config: calls.append(config))
+
+    assert ui.ensure_index(test_config) is None
+    assert calls == []
+
+
+def test_ensure_index_builds_what_is_missing(test_config, dense_index_builder, monkeypatch):
+    calls = []
+
+    def fake_build(config):
+        calls.append(config)
+        _write_index(config, [PRIMARY, FOREIGN], dense_index_builder)
+
+    monkeypatch.setattr(ui, "build_index", fake_build)
+
+    assert ui.ensure_index(test_config) is None
+    assert calls == [test_config]
+    assert ui.index_problems(test_config) == []
+
+
+def test_ensure_index_reports_a_failed_build_briefly_and_logs_the_traceback(test_config, monkeypatch, caplog):
+    def failing(config):
+        raise OSError("disk full" + chr(10) + "second line with technical details" + "x" * 500)
+
+    monkeypatch.setattr(ui, "build_index", failing)
+
+    message = ui.ensure_index(test_config)
+
+    assert message == "Could not build the search index (OSError): disk full"
+    assert any(record.exc_info for record in caplog.records)  # the full traceback is in the log
+
+
+def test_a_very_long_build_error_is_cut_short(test_config, monkeypatch):
+    monkeypatch.setattr(ui, "build_index", lambda config: (_ for _ in ()).throw(RuntimeError("y" * 1000)))
+
+    assert len(ui.ensure_index(test_config)) < 300
+
+
+def test_a_build_error_never_shows_the_api_key(test_config, monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "sekret-build-key")
+    monkeypatch.setattr(ui, "build_index", lambda config: (_ for _ in ()).throw(RuntimeError("failed with sekret-build-key")))
+
+    message = ui.ensure_index(test_config)
+
+    assert "sekret-build-key" not in message
+    assert "***" in message
+
+
+def test_ensure_index_reports_an_index_that_is_still_unusable(test_config, monkeypatch):
+    monkeypatch.setattr(ui, "build_index", lambda config: None)  # "succeeds" without writing anything
+
+    assert ui.ensure_index(test_config) == (
+        "The search index was built but is not usable yet: chunk store, dense index, knowledge graph."
+    )
+
+
+def test_build_index_runs_the_real_ingestion_script_and_gives_a_usable_index(test_config):
+    assert ui.index_problems(test_config) != []
+
+    ui.build_index(test_config)
+
+    assert ui.index_problems(test_config) == []
+    corpus = chunk_documents(load_documents(test_config.docs_dir), test_config.chunk_size, test_config.chunk_overlap)
+    assert len(load_chunks(test_config.chunks_file)) == len(corpus)
+    results = real_query_dense("What is a foreign key?", test_config)  # the dense index really answers
+    assert results and results[0][0].metadata["chunk_id"].startswith("databases")
+
+
+def test_the_ingest_script_still_works_from_the_command_line_without_arguments(test_config, dense_index_builder, monkeypatch):
+    for name, path in (
+        ("RAG_CHUNKS_FILE", test_config.chunks_file),
+        ("RAG_GRAPH_FILE", test_config.graph_file),
+        ("RAG_CHROMA_DIR", test_config.chroma_dir),
+    ):
+        monkeypatch.setenv(name, str(path))
+    monkeypatch.setattr("src.rag.dense_retrieval.build_dense_index", lambda chunks, config: dense_index_builder(chunks, config.chroma_dir))
+    spec = importlib.util.spec_from_file_location("ingest_script_for_test", PROJECT_ROOT / "scripts" / "ingest.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    module.main()  # no config given: it reads the environment, as `python scripts/ingest.py` does
+
+    assert ui.index_problems(test_config) == []
 
 
 # ---- run_question ----------------------------------------------------------
