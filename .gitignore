@@ -8,3 +8,9 @@ __pycache__/
 storage/
 
 .env
+.env.*
+!.env.example
+
+# Streamlit secrets and local logs
+.streamlit/secrets.toml
+*.log
